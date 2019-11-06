@@ -1,8 +1,12 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= piersharding/daskopr-controller:latest
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
+
+# Controller runtime arguments
+CONTROLLER_ARGS ?= 
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -11,7 +15,7 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager
+all: manifests manager
 
 # Run tests
 test: generate fmt vet manifests
@@ -23,16 +27,25 @@ manager: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
-	go run ./main.go
+	go run ./main.go $(CONTROLLER_ARGS)
 
 # Install CRDs into a cluster
 install: manifests
 	kustomize build config/crd | kubectl apply -f -
 
+# UnInstall CRDs into a cluster
+uninstall:
+	kustomize build config/crd | kubectl delete -f -
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests
 	cd config/manager && kustomize edit set image controller=${IMG}
 	kustomize build config/default | kubectl apply -f -
+
+# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+delete:
+	cd config/manager && kustomize edit set image controller=${IMG}
+	kustomize build config/default | kubectl delete -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -57,6 +70,8 @@ docker-build: test
 # Push the docker image
 docker-push:
 	docker push ${IMG}
+
+image: docker-build docker-push
 
 # find or download controller-gen
 # download controller-gen if necessary

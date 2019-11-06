@@ -1,7 +1,54 @@
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: pylibs
+# spec:
+#   storageClassName: standard
+#   accessModes:
+#     - ReadWriteMany
+#   resources:
+#     requests:
+#       storage: 1Gi
+#   volumeName: pylibs
+
+---
 apiVersion: analytics.piersharding.com/v1
 kind: Dask
 metadata:
   name: dask-sample
 spec:
-  # Add fields here
-  foo: bar
+  # daemon: true
+  jupyter: true
+  replicas: 3
+  # image: arl:ubuntu18.04
+  # image: daskdev/dask:latest
+  image: piersharding/arl-dask:latest
+  jupyterIngress: notebook.dask.local
+  schedulerIngress: scheduler.dask.local
+  imagePullPolicy: IfNotPresent
+  env:
+    - name: PYTHONPATH
+      value: /pylibs:/arl
+    - name: ARL
+      value: /arl
+    - name: ARL_DASK_SCHEDULER
+      value: dask-scheduler-app1:8786
+  volumes:
+    - hostPath:
+        path: /home/piers/git/private/algorithm-reference-library
+        type: DirectoryOrCreate
+      name: arl
+    - hostPath:
+        path: /home/piers/code/go/src/github.com/piersharding/dask-operator/pylibs
+        type: DirectoryOrCreate
+      name: pylibs
+    # - name: pylibs
+      # persistentVolumeClaim:
+      #   claimName: pylibs
+  volumeMounts:
+    - mountPath: /arl
+      readOnly: false
+      name: arl
+    - mountPath: "/pylibs"
+      name: pylibs
